@@ -30,7 +30,7 @@ os.makedirs(RESULT_FOLDER, exist_ok=True)
 
 # Make sure 'best.pt' is in the same directory as app.py or provide the full path
 
-model = YOLO("C:/100rabh/naman_ak/best.pt") # Adjust path if running locally
+model = YOLO("best.pt") # Adjust path if running locally
 
 
 @app.route('/')
