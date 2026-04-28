@@ -1,0 +1,269 @@
+html
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pothole Detection AI</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #0d1b4b, #1565c0, #42a5f5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            width: 580px;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        p {
+            font-size: 14px;
+            color: #555;
+        }
+
+        .drop-area {
+            border: 2px dashed #aaa;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .drop-area:hover {
+            border-color: #2196F3;
+            background: #f1f8ff;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        button {
+            background-color: #2196F3;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #1976d2;
+        }
+
+        img {
+            max-width: 100%;
+            margin-top: 15px;
+            border-radius: 6px;
+        }
+
+        /* 🔵 UPDATED RESULT SECTION */
+        .result-section {
+            margin-top: 25px;
+            border: 3px solid #2196F3;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            padding: 20px;
+            box-shadow: 0 4px 18px rgba(33, 150, 243, 0.25);
+        }
+
+        .result-label {
+            display: inline-block;
+            background: #2196F3;
+            color: white;
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 4px 14px;
+            border-radius: 20px;
+            margin-bottom: 10px;
+        }
+
+        /* 🔥 BIG RESULT TEXT */
+        .result-title {
+            font-size: 60px;
+            font-weight: 900;
+            color: #0d47a1;
+            margin: 6px 0 12px;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        #result {
+            width: 100%;
+            max-width: 520px;
+            min-height: 300px;
+            object-fit: contain;
+            border-radius: 10px;
+            border: 2px solid #90caf9;
+            background: #fff;
+            box-shadow: 0 2px 12px rgba(33, 150, 243, 0.15);
+            display: block;
+            margin: 0 auto;
+        }
+
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #2196F3;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error {
+            color: red;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Pothole Detection AI</h1>
+        <p>Upload an image to detect potholes using YOLOv8</p>
+
+        <div class="drop-area" id="dropArea">
+            Drag & Drop Image or Click to Upload
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <button id="predictBtn">Detect</button>
+
+        <div class="spinner" id="spinner"></div>
+
+        <div class="error" id="error"></div>
+
+        <h3>Preview</h3>
+        <img id="preview" style="display:none;">
+
+        <div class="result-section" id="resultSection" style="display:none;">
+            <span class="result-label">&#10003; Detection Output</span>
+            <div class="result-title">Result</div>
+            <img id="result">
+        </div>
+    </div>
+
+    <script>
+        const dropArea = document.getElementById('dropArea');
+        const fileInput = document.getElementById('fileInput');
+        const preview = document.getElementById('preview');
+        const result = document.getElementById('result');
+        const spinner = document.getElementById('spinner');
+        const errorBox = document.getElementById('error');
+        const predictBtn = document.getElementById('predictBtn');
+
+        let selectedFile = null;
+
+        // Click upload
+        dropArea.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            handleFile(e.target.files[0]);
+        });
+
+        // Drag & Drop
+        dropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropArea.style.background = '#eee';
+        });
+
+        dropArea.addEventListener('dragleave', () => {
+            dropArea.style.background = 'white';
+        });
+
+        dropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropArea.style.background = 'white';
+            handleFile(e.dataTransfer.files[0]);
+        });
+
+        function handleFile(file) {
+            errorBox.textContent = '';
+
+            if (!file) return;
+
+            if (!file.type.startsWith('image')) {
+                errorBox.textContent = 'Only image files allowed!';
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                errorBox.textContent = 'Max file size is 5MB';
+                return;
+            }
+
+            selectedFile = file;
+            preview.src = URL.createObjectURL(file);
+            preview.style.display = 'block';
+            document.getElementById('resultSection').style.display = 'none';
+        }
+
+        predictBtn.addEventListener('click', async () => {
+            if (!selectedFile) {
+                errorBox.textContent = 'Please upload an image first.';
+                return;
+            }
+
+            spinner.style.display = 'block';
+            result.style.display = 'block';
+            document.getElementById('resultSection').style.display = 'none';
+            errorBox.textContent = '';
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(text);
+                }
+
+                const blob = await response.blob();
+                result.src = URL.createObjectURL(blob);
+                document.getElementById('resultSection').style.display = 'block';
+
+            } catch (err) {
+                errorBox.textContent = err.message;
+            } finally {
+                spinner.style.display = 'none';
+            }
+        });
+    </script>
+
+</body>
+
+</html>
